@@ -70,6 +70,43 @@ def sync_prompts():
         pass
 
 
+def check_and_update():
+    """启动时检查 GitHub 是否有新版本，有则更新 app.py / index.html 并重启"""
+    if not GITHUB_REPO:
+        return
+    updated = False
+    for filename in ("app.py", "index.html"):
+        url = f"https://raw.githubusercontent.com/{GITHUB_REPO}/{GITHUB_BRANCH}/{filename}"
+        try:
+            r = requests.get(url, timeout=15)
+            if r.status_code != 200:
+                continue
+            local = BASE_DIR / filename
+            if not local.exists():
+                continue
+            if r.text.strip() == local.read_text(encoding="utf-8").strip():
+                continue
+            # 备份 → 写新版 → 标记重启
+            backup = local.with_suffix(local.suffix + ".bak")
+            local.rename(backup)
+            local.write_text(r.text, encoding="utf-8")
+            # 语法校验（只对 Python 文件）
+            if filename.endswith(".py"):
+                try:
+                    import ast
+                    ast.parse(r.text)
+                except SyntaxError:
+                    # 语法错误，回滚
+                    backup.rename(local)
+                    continue
+            updated = True
+        except Exception:
+            pass
+    if updated:
+        print("[Hermes-Linguist] 代码已更新，正在重启...")
+        os.execv(sys.executable, [sys.executable] + sys.argv)
+
+
 def log_translation(source_lang, target_lang, input_text, output_text, provider_name, is_image=False):
     """记录翻译历史到 data/translations.jsonl（保留 3 个月）"""
     entry = {
@@ -342,5 +379,6 @@ def open_browser():
 
 
 if __name__ == "__main__":
+    check_and_update()  # 先检查代码更新，有新版则自动重启
     threading.Thread(target=open_browser, daemon=True).start()
     app.run(host="127.0.0.1", port=58958, debug=False)
