@@ -1146,18 +1146,36 @@ async function lookupWord() {
 function pronounceWord() {
   const word = dictWordDisplay.textContent || dictWord.value.trim();
   if (!word) return;
-
   const langCode = dictLang.value;
-  // 映射语言代码到 BCP 47
-  const langMap = { 'zh': 'zh-CN', 'en-US': 'en-US', 'en-GB': 'en-GB',
-    'de': 'de-DE', 'fr': 'fr-FR', 'es': 'es-ES', 'pt': 'pt-PT',
-    'pl': 'pl-PL', 'ja': 'ja-JP', 'ko': 'ko-KR', 'yue': 'zh-HK' };
-  const lang = langMap[langCode] || langCode;
+  dictPronounceBtn.textContent = '⏳';
+  dictPronounceBtn.disabled = true;
 
-  const utterance = new SpeechSynthesisUtterance(word);
-  utterance.lang = lang;
-  utterance.rate = 0.85;
-  speechSynthesis.speak(utterance);
+  fetch('/api/tts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text: word, lang: langCode })
+  })
+  .then(r => {
+    if (!r.ok) throw new Error('TTS failed');
+    return r.blob();
+  })
+  .then(blob => {
+    const audio = new Audio(URL.createObjectURL(blob));
+    audio.onended = () => {
+      dictPronounceBtn.textContent = '🔊';
+      dictPronounceBtn.disabled = false;
+      URL.revokeObjectURL(audio.src);
+    };
+    audio.play().catch(() => {
+      dictPronounceBtn.textContent = '🔊';
+      dictPronounceBtn.disabled = false;
+    });
+  })
+  .catch(() => {
+    dictPronounceBtn.textContent = '🔊';
+    dictPronounceBtn.disabled = false;
+    showToast('发音服务暂不可用', true);
+  });
 }
 </script>
 </body>
