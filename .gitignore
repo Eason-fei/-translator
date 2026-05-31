@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+dist/
+build/
+*.spec
+.superpowers/
+*.app
+.DS_Store
+feedback/
+data/

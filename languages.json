@@ -1,0 +1,13 @@
+{
+  "zh": {"name": "中文", "name_zh": "中文", "name_en": "Chinese"},
+  "en-US": {"name": "English (US)", "name_zh": "英语（美式）", "name_en": "English (US)"},
+  "en-GB": {"name": "English (UK)", "name_zh": "英语（英式）", "name_en": "English (UK)"},
+  "de": {"name": "Deutsch", "name_zh": "德语", "name_en": "German"},
+  "fr": {"name": "Français", "name_zh": "法语", "name_en": "French"},
+  "es": {"name": "Español", "name_zh": "西班牙语", "name_en": "Spanish"},
+  "pt": {"name": "Português", "name_zh": "葡萄牙语", "name_en": "Portuguese"},
+  "pl": {"name": "Polski", "name_zh": "波兰语", "name_en": "Polish"},
+  "ja": {"name": "日本語", "name_zh": "日语", "name_en": "Japanese"},
+  "ko": {"name": "한국어", "name_zh": "韩语", "name_en": "Korean"},
+  "yue": {"name": "粵語", "name_zh": "粤语", "name_en": "Cantonese"}
+}

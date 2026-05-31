@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>翻译器 · Translator · Tłumacz</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0d1117;
+  --bg-panel: #161b22;
+  --border: #30363d;
+  --text: #c9d1d9;
+  --text-muted: #8b949e;
+  --accent: #58a6ff;
+  --accent-hover: #79c0ff;
+  --gold: #f0c040;
+  --green: #3fb950;
+  --red: #f85149;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+}
+
+.app { width: 100%; max-width: 1000px; padding: 20px; }
+
+/* Header */
+.header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding-bottom: 16px; border-bottom: 1px solid var(--border); margin-bottom: 20px;
+}
+.logo { font-size: 20px; font-weight: 600; }
+.icon-btn {
+  background: none; border: 1px solid var(--border); color: var(--text);
+  font-size: 18px; padding: 6px 10px; border-radius: 6px; cursor: pointer;
+}
+.icon-btn:hover { background: var(--bg-panel); }
+.icon-btn.active { background: var(--bg-panel); border-color: var(--accent); color: var(--accent); }
+
+/* Split label */
+.split-label {
+  text-align: center; font-size: 13px; color: var(--text-muted);
+  padding: 8px 0; letter-spacing: 1px;
+}
+.panels-label {
+  text-align: center; font-size: 13px; color: var(--text-muted);
+  padding: 8px 0 4px; letter-spacing: 1px;
+}
+
+/* Tabs */
+.tabs {
+  display: flex; gap: 4px; margin-bottom: 16px;
+  border-bottom: 1px solid var(--border); padding-bottom: 0;
+}
+.tab-btn {
+  background: none; border: none; color: var(--text-muted);
+  padding: 8px 16px; font-size: 14px; cursor: pointer;
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+  transition: all 0.15s;
+}
+.tab-btn:hover { color: var(--text); }
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* Dictionary */
+.dict-search {
+  display: flex; gap: 8px; margin-bottom: 16px;
+}
+.dict-search input:focus { border-color: var(--accent); }
+.dict-section {
+  background: var(--bg-panel); border: 1px solid var(--border);
+  border-radius: 8px; padding: 14px; margin-bottom: 12px;
+}
+.dict-section-title {
+  font-size: 11px; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;
+}
+.dict-section .pos-tag {
+  display: inline-block; font-size: 11px; padding: 2px 8px;
+  background: #1a1a3a; color: var(--accent); border-radius: 10px;
+  margin-right: 6px; margin-bottom: 4px;
+}
+.dict-section .def-item { margin-bottom: 6px; font-size: 14px; line-height: 1.5; }
+.dict-section .example-item {
+  margin-bottom: 8px; padding-left: 12px;
+  border-left: 2px solid var(--border); font-size: 13px; line-height: 1.5;
+}
+.dict-section .example-orig { color: var(--text); }
+.dict-section .example-trans { color: var(--text-muted); font-size: 12px; margin-top: 2px; }
+
+/* Selectors */
+.selectors {
+  display: flex; gap: 10px; align-items: flex-end; margin-bottom: 16px; flex-wrap: wrap;
+}
+.selector-group { flex: 1; min-width: 120px; }
+.selector-group label {
+  display: block; font-size: 11px; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;
+}
+.selector-group select, .selector-group select:focus {
+  width: 100%; padding: 8px 10px; background: var(--bg-panel);
+  border: 1px solid var(--border); color: var(--text); border-radius: 6px;
+  font-size: 14px; outline: none;
+}
+.selector-group select:focus { border-color: var(--accent); }
+.swap-btn {
+  background: var(--bg-panel); border: 1px solid var(--border);
+  color: var(--text); font-size: 18px; padding: 7px 10px;
+  border-radius: 6px; cursor: pointer; height: 38px;
+}
+.swap-btn:hover { border-color: var(--accent); }
+
+/* Panels */
+.panels { display: flex; gap: 12px; margin-bottom: 14px; }
+.panel { flex: 1; min-height: 200px; }
+.panel-input {
+  background: var(--bg-panel); border: 1px solid var(--border);
+  border-radius: 8px; padding: 12px; position: relative;
+  display: flex; flex-direction: column;
+}
+.panel-input textarea {
+  width: 100%; height: 100%; min-height: 180px; background: transparent;
+  border: none; color: var(--text); font-size: 15px; resize: vertical;
+  outline: none; font-family: inherit; line-height: 1.6; flex: 1;
+}
+.image-preview { margin-top: 8px; position: relative; display: inline-block; }
+.image-preview img { max-width: 100%; max-height: 200px; border-radius: 6px; }
+.remove-btn {
+  position: absolute; top: -6px; right: -6px;
+  width: 24px; height: 24px; border-radius: 50%; border: none;
+  background: var(--red); color: white; font-size: 13px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.panel-output {
+  background: var(--bg-panel); border: 1px solid var(--border);
+  border-radius: 8px; padding: 12px; display: flex; flex-direction: column;
+}
+.output-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding-bottom: 8px; border-bottom: 1px solid var(--border); margin-bottom: 8px;
+}
+.output-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; }
+.copy-btn {
+  background: none; border: none; color: var(--text-muted);
+  font-size: 16px; cursor: pointer; padding: 2px 6px;
+}
+.copy-btn:hover { color: var(--accent); }
+.output-content {
+  flex: 1; font-size: 15px; line-height: 1.6; color: var(--text);
+  white-space: pre-wrap; word-wrap: break-word; outline: none;
+  min-height: 160px;
+}
+.output-content:empty::before {
+  content: '翻译结果将显示在这里...'; color: var(--text-muted);
+}
+
+/* Big copy button */
+.copy-big-btn {
+  margin-top: 8px; width: 100%; padding: 8px 0;
+  background: var(--bg); border: 1px solid var(--border);
+  color: var(--text-muted); font-size: 13px; border-radius: 6px; cursor: pointer;
+  transition: all 0.15s;
+}
+.copy-big-btn:hover { border-color: var(--accent); color: var(--accent); }
+.copy-big-btn.copied { border-color: var(--green); color: var(--green); }
+
+/* Feedback */
+.feedback-row {
+  display: flex; gap: 8px; margin-top: 10px; align-items: center;
+}
+.feedback-row .feedback-label {
+  font-size: 12px; color: var(--text-muted);
+}
+.feedback-btn {
+  background: var(--bg); border: 1px solid var(--border);
+  color: var(--text-muted); font-size: 16px; padding: 4px 12px;
+  border-radius: 6px; cursor: pointer; transition: all 0.15s;
+  line-height: 1;
+}
+.feedback-btn:hover { border-color: var(--accent); color: var(--accent); }
+.feedback-btn.voted { border-color: var(--green); color: var(--green); }
+.feedback-btn.voted-bad { border-color: var(--red); color: var(--red); }
+
+/* Actions */
+.actions { display: flex; gap: 10px; align-items: center; }
+.primary-btn {
+  background: var(--accent); color: #fff; border: none;
+  padding: 10px 24px; border-radius: 6px; font-size: 15px;
+  cursor: pointer; font-weight: 500;
+}
+.primary-btn:hover { background: var(--accent-hover); }
+.primary-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.or-text { color: var(--text-muted); font-size: 13px; }
+.upload-label {
+  color: var(--accent); font-size: 14px; cursor: pointer;
+}
+.upload-label:hover { color: var(--accent-hover); }
+
+/* Auto translate toggle */
+.auto-toggle {
+  display: flex; align-items: center; gap: 5px; cursor: pointer;
+  font-size: 13px; color: var(--text-muted); user-select: none;
+}
+.auto-toggle input { accent-color: var(--accent); }
+.auto-toggle:has(input:checked) { color: var(--green); }
+
+/* Modal */
+.modal {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.7); display: flex;
+  justify-content: center; align-items: center; z-index: 100;
+}
+.modal-content {
+  background: var(--bg-panel); border: 1px solid var(--border);
+  border-radius: 12px; width: 90%; max-width: 680px; max-height: 80vh;
+  overflow-y: auto;
+}
+.modal-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 16px 20px; border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; background: var(--bg-panel);
+}
+.modal-header h2 { font-size: 18px; }
+.close-btn {
+  background: none; border: none; color: var(--text-muted);
+  font-size: 20px; cursor: pointer;
+}
+.modal-body { padding: 20px; }
+.modal-footer { padding: 12px 20px; border-top: 1px solid var(--border); text-align: right; }
+
+.provider-card {
+  border: 1px solid var(--border); border-radius: 8px; padding: 14px;
+  margin-bottom: 12px;
+}
+.provider-card .provider-name {
+  font-weight: 600; margin-bottom: 6px; display: flex; gap: 8px; align-items: center;
+}
+.provider-card .provider-tags { font-size: 11px; display: flex; gap: 4px; flex-wrap: wrap; }
+.provider-card input[type="password"], .provider-card input[type="text"] {
+  width: 100%; padding: 8px 10px; background: var(--bg);
+  border: 1px solid var(--border); color: var(--text);
+  border-radius: 6px; font-size: 13px; margin-top: 8px; outline: none;
+}
+.provider-card input:focus { border-color: var(--accent); }
+
+.tag {
+  font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 500;
+}
+.tag-vision { background: #1a3a1a; color: var(--green); }
+.tag-text { background: #1a1a3a; color: var(--accent); }
+.tag-china { background: #3a1a1a; color: #f0883e; }
+.tag-free { background: #1a3a1a; color: var(--green); }
+
+/* Toast */
+.toast {
+  position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+  background: var(--green); color: #fff; padding: 10px 24px;
+  border-radius: 8px; font-size: 14px; z-index: 200;
+  pointer-events: none;
+  animation: fadeInOut 2s forwards;
+}
+.toast.error { background: var(--red); }
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translateX(-50%) translateY(10px); }
+  15% { opacity: 1; transform: translateX(-50%) translateY(0); }
+  75% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Spinner */
+.spinner {
+  display: inline-block; width: 14px; height: 14px;
+  border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff;
+  border-radius: 50%; animation: spin 0.6s linear infinite; margin-right: 6px;
+  vertical-align: middle;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 700px) {
+  .panels { flex-direction: column; }
+  .selectors { flex-direction: column; }
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header class="header">
+    <h1 class="logo">🌐 翻译器</h1>
+    <div style="display:flex;gap:8px">
+      <button id="splitBtn" class="icon-btn" title="分屏模式：上半屏看对方消息译文，下半屏写回复">📱 分屏</button>
+      <button id="settingsBtn" class="icon-btn" title="设置 API Key">⚙️</button>
+    </div>
+  </header>
+
+  <!-- 模式切换标签 -->
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="translate">📝 翻译</button>
+    <button class="tab-btn" data-tab="dictionary">📖 查词</button>
+  </div>
+
+  <main class="main">
+    <!-- 翻译模式 -->
+    <div id="translateTab">
+    <div class="selectors">
+      <div class="selector-group">
+        <label>源语言</label>
+        <select id="sourceLang"></select>
+      </div>
+      <button id="swapBtn" class="swap-btn" title="交换语言">⇄</button>
+      <div class="selector-group">
+        <label>目标语言</label>
+        <select id="targetLang"></select>
+      </div>
+    </div>
+
+    <div class="panels-label" id="incomingLabel" style="display:none">📥 收到的消息</div>
+    <div class="panels">
+      <div class="panel panel-input" id="inputPanel">
+        <textarea id="inputText" placeholder="输入文本 · 拖拽图片到这里 · Cmd+V 粘贴图片"></textarea>
+        <div class="image-preview" id="imagePreview" style="display:none">
+          <img id="previewImg" src="" alt="预览">
+          <button id="removeImage" class="remove-btn">✕</button>
+        </div>
+      </div>
+      <div class="panel panel-output">
+        <div class="output-header">
+          <span class="output-label">翻译结果</span>
+          <button id="copyBtn" class="copy-btn" title="复制">📋</button>
+        </div>
+        <div id="outputText" class="output-content" contenteditable="true"></div>
+        <button id="copyBtnBig" class="copy-big-btn">📋 复制全部</button>
+        <div class="feedback-row" id="feedbackRow" style="display:none">
+          <span class="feedback-label">翻译质量：</span>
+          <button class="feedback-btn" id="feedbackGood" title="翻译得好">👍</button>
+          <button class="feedback-btn" id="feedbackBad" title="翻译有问题">👎</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 分屏：回复面板 -->
+    <div class="split-label" id="splitLabel" style="display:none">📤 回复</div>
+    <div class="panels split-panels" id="splitPanels" style="display:none">
+      <div class="panel panel-input">
+        <textarea id="replyInput" placeholder="输入回复内容..."></textarea>
+      </div>
+      <div class="panel panel-output">
+        <div class="output-header">
+          <span class="output-label">回复译文</span>
+          <button id="replyCopyBtn" class="copy-btn" title="复制">📋</button>
+        </div>
+        <div id="replyOutput" class="output-content" contenteditable="true"></div>
+        <button id="replyCopyBtnBig" class="copy-big-btn">📋 复制全部</button>
+        <div class="feedback-row" id="replyFeedbackRow" style="display:none">
+          <span class="feedback-label">翻译质量：</span>
+          <button class="feedback-btn" id="replyFeedbackGood" title="翻译得好">👍</button>
+          <button class="feedback-btn" id="replyFeedbackBad" title="翻译有问题">👎</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button id="translateBtn" class="primary-btn">翻译</button>
+      <label class="auto-toggle" title="自动翻译：输入后自动翻译，无需点击按钮">
+        <input type="checkbox" id="autoTranslate">
+        <span>⚡ 自动翻译</span>
+      </label>
+      <span class="or-text">或</span>
+      <label class="upload-label">
+        📎 上传图片
+        <input type="file" id="imageInput" accept="image/*" hidden>
+      </label>
+    </div>
+    </div><!-- /translateTab -->
+
+    <!-- 词典模式 -->
+    <div id="dictionaryTab" style="display:none">
+      <div class="selectors">
+        <div class="selector-group">
+          <label>语言</label>
+          <select id="dictLang"></select>
+        </div>
+      </div>
+      <div class="dict-search">
+        <input type="text" id="dictWord" placeholder="输入单词..."
+               style="flex:1;padding:10px 14px;background:var(--bg-panel);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:16px;outline:none">
+        <button id="dictLookupBtn" class="primary-btn">查询</button>
+      </div>
+      <div id="dictResult" style="margin-top:16px;display:none">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+          <span id="dictWordDisplay" style="font-size:24px;font-weight:700"></span>
+          <button id="dictPronounceBtn" class="icon-btn" title="发音">🔊</button>
+        </div>
+        <div id="dictIpa" style="font-size:15px;color:var(--text-muted);margin-bottom:8px"></div>
+        <div id="dictPos" style="margin-bottom:12px"></div>
+        <div class="dict-section">
+          <div class="dict-section-title">释义</div>
+          <div id="dictDef"></div>
+        </div>
+        <div class="dict-section">
+          <div class="dict-section-title">例句</div>
+          <div id="dictExamples"></div>
+        </div>
+      </div>
+    </div><!-- /dictionaryTab -->
+
+  </main>
+
+  <!-- 设置弹窗 -->
+  <div id="settingsModal" class="modal" style="display:none">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>⚙️ API 设置</h2>
+        <button id="closeSettings" class="close-btn">✕</button>
+      </div>
+      <div class="modal-body" id="settingsBody"></div>
+      <div class="modal-footer">
+        <button id="saveSettings" class="primary-btn">保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============ 状态 ============
+let imageData = null; // base64 string
+let debounceTimer = null; // 自动翻译防抖
+
+// ============ DOM ============
+const $id = id => document.getElementById(id);
+const sourceLangEl  = $id('sourceLang');
+const targetLangEl  = $id('targetLang');
+const inputTextEl   = $id('inputText');
+const outputTextEl  = $id('outputText');
+const translateBtn  = $id('translateBtn');
+const swapBtn       = $id('swapBtn');
+const copyBtn       = $id('copyBtn');
+const imageInput    = $id('imageInput');
+const imagePreview  = $id('imagePreview');
+const previewImg    = $id('previewImg');
+const removeImageBtn= $id('removeImage');
+const settingsBtn   = $id('settingsBtn');
+const settingsModal = $id('settingsModal');
+const closeSettings = $id('closeSettings');
+const saveSettings  = $id('saveSettings');
+const settingsBody  = $id('settingsBody');
+const inputPanel    = $id('inputPanel');
+const autoTranslateEl = $id('autoTranslate');
+const copyBtnBig    = $id('copyBtnBig');
+// 分屏
+const splitBtn      = $id('splitBtn');
+const incomingLabel = $id('incomingLabel');
+const splitLabel    = $id('splitLabel');
+const splitPanels   = $id('splitPanels');
+const replyInput    = $id('replyInput');
+const replyOutput   = $id('replyOutput');
+const replyCopyBtn  = $id('replyCopyBtn');
+const replyCopyBtnBig = $id('replyCopyBtnBig');
+let splitMode = false;
+let replyDebounce = null;
+// 反馈相关
+const feedbackRow         = $id('feedbackRow');
+const feedbackGood        = $id('feedbackGood');
+const feedbackBad         = $id('feedbackBad');
+const replyFeedbackRow    = $id('replyFeedbackRow');
+const replyFeedbackGood   = $id('replyFeedbackGood');
+const replyFeedbackBad    = $id('replyFeedbackBad');
+let feedbackEnabled = false;
+let lastFeedbackData = null;  // 最近一次翻译的上下文，供反馈上报用
+
+// 词典 DOM
+const tabBtns       = document.querySelectorAll('.tab-btn');
+const translateTab  = $id('translateTab');
+const dictionaryTab = $id('dictionaryTab');
+const dictLang      = $id('dictLang');
+const dictWord      = $id('dictWord');
+const dictLookupBtn = $id('dictLookupBtn');
+const dictResult    = $id('dictResult');
+const dictWordDisplay = $id('dictWordDisplay');
+const dictPronounceBtn = $id('dictPronounceBtn');
+const dictIpa       = $id('dictIpa');
+const dictPos       = $id('dictPos');
+const dictDef       = $id('dictDef');
+const dictExamples  = $id('dictExamples');
+
+// ============ 反馈 ============
+function getDeviceId() {
+  let id = localStorage.getItem('translator_device_id');
+  if (!id) {
+    id = 'dev-' + Math.random().toString(36).slice(2, 10);
+    localStorage.setItem('translator_device_id', id);
+  }
+  return id;
+}
+
+function sendFeedback(rating, row, goodBtn, badBtn) {
+  if (!lastFeedbackData) return;
+  goodBtn.disabled = badBtn.disabled = true;
+  goodBtn.classList.remove('voted');
+  badBtn.classList.remove('voted-bad');
+  if (rating === 'good') goodBtn.classList.add('voted');
+  else badBtn.classList.add('voted-bad');
+
+  fetch('/api/feedback', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      rating, device_id: getDeviceId(),
+      source_lang: lastFeedbackData.source_lang,
+      target_lang: lastFeedbackData.target_lang,
+      input: lastFeedbackData.input,
+      output: lastFeedbackData.output,
+      provider: lastFeedbackData.provider,
+    })
+  }).catch(() => {});
+}
+
+function showFeedbackRow(row, data) {
+  if (!feedbackEnabled) { row.style.display = 'none'; return; }
+  lastFeedbackData = data;
+  row.style.display = 'flex';
+}
+
+function hideFeedbackRows() {
+  feedbackRow.style.display = 'none';
+  replyFeedbackRow.style.display = 'none';
+  lastFeedbackData = null;
+  [feedbackGood, feedbackBad, replyFeedbackGood, replyFeedbackBad].forEach(b => {
+    b.disabled = false;
+    b.classList.remove('voted', 'voted-bad');
+  });
+}
+
+// ============ API Key ============
+function getKeys() {
+  try { return JSON.parse(localStorage.getItem('translator_keys') || '{}'); }
+  catch { return {}; }
+}
+function saveKeys(obj) {
+  localStorage.setItem('translator_keys', JSON.stringify(obj));
+}
+
+// 自动选取第一个已配置 Key 的 Provider
+// requireVision: 为 true 时只返回支持图片的 Provider
+function getActiveProvider(requireVision) {
+  const keys = getKeys();
+  for (const pid of Object.keys(window._providers || {})) {
+    if (keys[pid]) {
+      if (requireVision && !window._providers[pid].supports_vision) continue;
+      return { id: pid, key: keys[pid] };
+    }
+  }
+  return null;
+}
+
+// ============ 初始化 ============
+async function init() {
+  await loadLanguages();
+  await loadProviders();
+  loadSettingsUI();
+  // 恢复分屏状态
+  if (localStorage.getItem('split_mode') === 'true') toggleSplit();
+  setupEvents();
+}
+
+async function loadLanguages() {
+  try {
+    const langs = await (await fetch('/api/languages')).json();
+    sourceLangEl.innerHTML = targetLangEl.innerHTML = dictLang.innerHTML = '';
+    for (const [code, info] of Object.entries(langs)) {
+      const label = info.name === info.name_zh ? info.name : `${info.name} (${info.name_zh})`;
+      sourceLangEl.add(new Option(label, code));
+      targetLangEl.add(new Option(label, code));
+      dictLang.add(new Option(label, code));
+    }
+    sourceLangEl.value = 'zh';
+    targetLangEl.value = 'pl';
+    dictLang.value = 'en-US';
+  } catch(e) { console.error(e); }
+}
+
+async function loadProviders() {
+  try {
+    window._providers = await (await fetch('/api/providers')).json();
+  } catch(e) { console.error(e); }
+}
+
+function loadSettingsUI() {
+  const providers = window._providers || {};
+  const keys = getKeys();
+  settingsBody.innerHTML = '';
+
+  for (const [pid, p] of Object.entries(providers)) {
+    const card = document.createElement('div');
+    card.className = 'provider-card';
+
+    let tags = '';
+    if (p.recommended_for === 'text') tags += '<span class="tag tag-text">推荐·文本</span>';
+    if (p.recommended_for === 'image') tags += '<span class="tag tag-free">推荐·图片</span>';
+    if (p.supports_vision) tags += '<span class="tag tag-vision">支持图片</span>';
+    else tags += '<span class="tag tag-text">仅文本</span>';
+    if (p.region === 'china') tags += '<span class="tag tag-china">国内直连</span>';
+
+    card.innerHTML = `
+      <div class="provider-name">
+        ${p.name}
+        <span class="provider-tags">${tags}</span>
+      </div>
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:2px">${p.model}</div>
+      <input type="password" id="key-${pid}" placeholder="输入 API Key..."
+             value="${keys[pid] || ''}" autocomplete="off">
+    `;
+    settingsBody.appendChild(card);
+  }
+
+  // 反馈开关
+  const fbDiv = document.createElement('div');
+  fbDiv.className = 'provider-card';
+  fbDiv.innerHTML = `
+    <div class="provider-name">📊 翻译质量反馈</div>
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px">开启后在翻译结果旁显示 👍👎，帮助持续优化翻译质量</div>
+    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px">
+      <input type="checkbox" id="feedbackToggle" ${feedbackEnabled ? 'checked' : ''}>
+      <span>${feedbackEnabled ? '✅ 已开启' : '参与翻译质量反馈'}</span>
+    </label>
+  `;
+  settingsBody.appendChild(fbDiv);
+}
+
+// ============ 事件 ============
+function setupEvents() {
+  // 标签切换
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      tabBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const tab = btn.dataset.tab;
+      translateTab.style.display = tab === 'translate' ? '' : 'none';
+      dictionaryTab.style.display = tab === 'dictionary' ? '' : 'none';
+    });
+  });
+  // 词典
+  dictLookupBtn.addEventListener('click', lookupWord);
+  dictWord.addEventListener('keydown', e => { if (e.key === 'Enter') lookupWord(); });
+  dictPronounceBtn.addEventListener('click', pronounceWord);
+  translateBtn.addEventListener('click', doTranslate);
+  swapBtn.addEventListener('click', swapLanguages);
+  copyBtn.addEventListener('click', copyResult);
+  copyBtnBig.addEventListener('click', copyResult);
+  // 分屏
+  splitBtn.addEventListener('click', toggleSplit);
+  replyCopyBtn.addEventListener('click', copyReply);
+  replyCopyBtnBig.addEventListener('click', copyReply);
+  replyInput.addEventListener('input', () => {
+    if (!replyInput.value.trim()) { replyOutput.textContent = ''; return; }
+    if (autoTranslateEl.checked) tryReplyTranslate();
+  });
+  settingsBtn.addEventListener('click', () => { settingsModal.style.display = 'flex'; loadSettingsUI(); });
+  closeSettings.addEventListener('click', () => settingsModal.style.display = 'none');
+  settingsModal.addEventListener('click', e => { if (e.target === settingsModal) settingsModal.style.display = 'none'; });
+  saveSettings.addEventListener('click', saveSettingsHandler);
+  imageInput.addEventListener('change', handleUpload);
+  removeImageBtn.addEventListener('click', removeImage);
+  document.addEventListener('paste', handlePaste);
+  inputPanel.addEventListener('paste', handlePaste);
+  inputTextEl.addEventListener('paste', handlePaste);
+  inputPanel.addEventListener('dragover', e => e.preventDefault());
+  inputPanel.addEventListener('drop', handleDrop);
+  inputTextEl.addEventListener('dragover', e => { e.preventDefault(); e.stopPropagation(); });
+  inputTextEl.addEventListener('drop', e => { e.preventDefault(); e.stopPropagation(); handleDrop(e); });
+  // 自动翻译
+  autoTranslateEl.checked = localStorage.getItem('auto_translate') === 'true';
+  autoTranslateEl.addEventListener('change', () => {
+    localStorage.setItem('auto_translate', autoTranslateEl.checked);
+    if (autoTranslateEl.checked) tryAutoTranslate(); // 立即触发一次
+  });
+  inputTextEl.addEventListener('input', () => {
+    if (!inputTextEl.value.trim()) { outputTextEl.textContent = ''; return; }
+    if (autoTranslateEl.checked) tryAutoTranslate();
+  });
+  // 语言/模型切换时自动重翻
+  sourceLangEl.addEventListener('change', () => { if (autoTranslateEl.checked) tryAutoTranslate(); });
+  targetLangEl.addEventListener('change', () => { if (autoTranslateEl.checked) tryAutoTranslate(); });
+  // 键盘快捷键
+  document.addEventListener('keydown', e => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); doTranslate(); }
+  });
+  // 反馈按钮
+  feedbackGood.addEventListener('click', () => sendFeedback('good', feedbackRow, feedbackGood, feedbackBad));
+  feedbackBad.addEventListener('click', () => sendFeedback('bad', feedbackRow, feedbackGood, feedbackBad));
+  replyFeedbackGood.addEventListener('click', () => sendFeedback('good', replyFeedbackRow, replyFeedbackGood, replyFeedbackBad));
+  replyFeedbackBad.addEventListener('click', () => sendFeedback('bad', replyFeedbackRow, replyFeedbackGood, replyFeedbackBad));
+  // 输入变化时隐藏反馈
+  inputTextEl.addEventListener('input', () => hideFeedbackRows());
+  replyInput.addEventListener('input', () => { replyFeedbackRow.style.display = 'none'; });
+  // 恢复反馈开关状态
+  feedbackEnabled = localStorage.getItem('feedback_enabled') === 'true';
+  // 恢复设备 ID（静默生成）
+  getDeviceId();
+}
+
+function swapLanguages() {
+  [sourceLangEl.value, targetLangEl.value] = [targetLangEl.value, sourceLangEl.value];
+}
+
+async function copyResult() {
+  const text = outputTextEl.innerText || '';
+  await navigator.clipboard.writeText(text);
+  // 大按钮视觉反馈
+  copyBtnBig.classList.add('copied');
+  copyBtnBig.textContent = '✅ 已复制';
+  setTimeout(() => {
+    copyBtnBig.classList.remove('copied');
+    copyBtnBig.innerHTML = '📋 复制全部';
+  }, 1500);
+}
+
+// ============ 分屏 ============
+function toggleSplit() {
+  splitMode = !splitMode;
+  splitBtn.classList.toggle('active', splitMode);
+  incomingLabel.style.display = splitMode ? '' : 'none';
+  splitLabel.style.display = splitMode ? '' : 'none';
+  splitPanels.style.display = splitMode ? 'flex' : 'none';
+  localStorage.setItem('split_mode', splitMode);
+  if (splitMode && !replyInput.value && outputTextEl.textContent) {
+    outputTextEl.textContent = '';
+  }
+}
+
+async function copyReply() {
+  const text = replyOutput.innerText || '';
+  await navigator.clipboard.writeText(text);
+  replyCopyBtnBig.classList.add('copied');
+  replyCopyBtnBig.textContent = '✅ 已复制';
+  setTimeout(() => {
+    replyCopyBtnBig.classList.remove('copied');
+    replyCopyBtnBig.innerHTML = '📋 复制全部';
+  }, 1500);
+}
+
+function tryReplyTranslate() {
+  clearTimeout(replyDebounce);
+  const text = replyInput.value.trim();
+  if (!text) return;
+  replyDebounce = setTimeout(() => {
+    if (replyInput.value.trim() === text) doReplyTranslate();
+  }, 500);
+}
+
+async function doReplyTranslate() {
+  const active = getActiveProvider();
+  if (!active) return;
+  const apiKey = active.key;
+  const providerId = active.id;
+  const text = replyInput.value.trim();
+
+  if (!text) return;
+
+  replyOutput.textContent = '翻译中...';
+  replyOutput.style.color = 'var(--text-muted)';
+
+  try {
+    const body = { provider: providerId, api_key: apiKey,
+      // 回复方向与主面板相反
+      source_lang: targetLangEl.value, target_lang: sourceLangEl.value,
+      text };
+    const resp = await fetch('/api/translate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await resp.json();
+    replyOutput.style.color = 'var(--text)';
+    replyOutput.textContent = data.error ? '错误：' + data.error : data.translation;
+    if (!data.error) {
+      showFeedbackRow(replyFeedbackRow, {
+        source_lang: targetLangEl.value, target_lang: sourceLangEl.value,
+        input: text,
+        output: data.translation,
+        provider: data.provider || providerId
+      });
+    }
+  } catch(e) {
+    replyOutput.style.color = 'var(--text)';
+    replyOutput.textContent = '网络错误：' + e.message;
+  }
+}
+
+// ============ 图片处理 ============
+function handlePaste(e) {
+  // 先检查 clipboardData.items（浏览器内复制图片）
+  for (const item of (e.clipboardData?.items || [])) {
+    if (item.type.startsWith('image/')) {
+      e.preventDefault();
+      processFile(item.getAsFile());
+      return;
+    }
+  }
+  // 再检查 clipboardData.files（从 Finder/文件管理器复制的图片）
+  const file = e.clipboardData?.files?.[0];
+  if (file && file.type.startsWith('image/')) {
+    e.preventDefault();
+    processFile(file);
+  }
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  const file = e.dataTransfer?.files?.[0];
+  if (file?.type.startsWith('image/')) processFile(file);
+}
+
+function handleUpload(e) {
+  const file = e.target.files?.[0];
+  if (file) processFile(file);
+}
+
+function processFile(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    imageData = reader.result.split(',')[1];
+    previewImg.src = reader.result;
+    imagePreview.style.display = 'inline-block';
+    inputTextEl.style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeImage() {
+  imageData = null;
+  imagePreview.style.display = 'none';
+  previewImg.src = '';
+  inputTextEl.style.display = '';
+}
+
+// ============ 设置 ============
+function saveSettingsHandler() {
+  const providers = window._providers || {};
+  const keys = {};
+  for (const pid of Object.keys(providers)) {
+    const inp = document.getElementById(`key-${pid}`);
+    if (inp?.value.trim()) keys[pid] = inp.value.trim();
+  }
+  saveKeys(keys);
+  // 保存反馈开关
+  const fbToggle = document.getElementById('feedbackToggle');
+  feedbackEnabled = fbToggle?.checked || false;
+  localStorage.setItem('feedback_enabled', feedbackEnabled);
+  // 如果关闭了反馈，隐藏现有按钮
+  if (!feedbackEnabled) hideFeedbackRows();
+  settingsModal.style.display = 'none';
+  showToast('设置已保存');
+}
+
+// ============ 翻译 ============
+async function doTranslate() {
+  const active = getActiveProvider();
+  if (!active) { showToast('请先在设置中配置 API Key', true); return; }
+  let apiKey = active.key;
+  let providerId = active.id;
+
+  const text = inputTextEl.value.trim();
+  if (!text && !imageData) { showToast('请输入文本或上传图片', true); return; }
+
+  // 图片模式：自动切换到支持 vision 的 Provider
+  if (imageData) {
+    let p = window._providers[providerId];
+    if (!p?.supports_vision) {
+      // 查找第一个支持 vision 且有 Key 的 Provider
+      const visionProvider = getActiveProvider(true);
+      if (visionProvider) {
+        providerId = visionProvider.id;
+        apiKey = visionProvider.key;
+      } else {
+        outputTextEl.style.color = 'var(--red)';
+        outputTextEl.textContent = '错误：没有支持图片翻译的模型可用，请在设置中配置一个支持图片的 API Key（如通义千问、智谱等）';
+        showToast('没有支持图片翻译的模型', true);
+        return;
+      }
+    }
+  }
+
+  translateBtn.disabled = true;
+  const origHTML = translateBtn.innerHTML;
+  translateBtn.innerHTML = '<span class="spinner"></span>翻译中...';
+  hideFeedbackRows();
+  outputTextEl.textContent = '翻译中...';
+  outputTextEl.style.color = 'var(--text-muted)';
+
+  try {
+    const body = { provider: providerId, api_key: apiKey,
+      source_lang: sourceLangEl.value, target_lang: targetLangEl.value };
+    if (imageData) body.image = imageData; else body.text = text;
+
+    const resp = await fetch('/api/translate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await resp.json();
+
+    outputTextEl.style.color = 'var(--text)';
+    if (data.error) {
+      outputTextEl.textContent = '错误：' + data.error;
+    } else {
+      outputTextEl.textContent = data.translation;
+      showFeedbackRow(feedbackRow, {
+        source_lang: sourceLangEl.value, target_lang: targetLangEl.value,
+        input: imageData ? '[图片]' : text,
+        output: data.translation,
+        provider: data.provider || providerId
+      });
+    }
+  } catch(e) {
+    outputTextEl.style.color = 'var(--text)';
+    outputTextEl.textContent = '网络错误：' + e.message;
+  } finally {
+    translateBtn.disabled = false;
+    translateBtn.innerHTML = origHTML;
+  }
+}
+
+// 防抖自动翻译：输入停止 500ms 后自动触发
+function tryAutoTranslate() {
+  clearTimeout(debounceTimer);
+  const text = inputTextEl.value.trim();
+  if (!text || imageData) return; // 有图片时不自动翻译
+  debounceTimer = setTimeout(() => {
+    if (inputTextEl.value.trim() === text) doTranslate();
+  }, 500);
+}
+
+function showToast(msg, isError) {
+  const el = document.createElement('div');
+  el.className = 'toast' + (isError ? ' error' : '');
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2200);
+}
+
+// 启动
+init();
+
+// ============ 词典 ============
+async function lookupWord() {
+  const word = dictWord.value.trim();
+  if (!word) return;
+
+  const active = getActiveProvider();
+  if (!active) { showToast('请先在设置中配置 API Key', true); return; }
+
+  const langName = dictLang.options[dictLang.selectedIndex]?.text || dictLang.value;
+
+  dictResult.style.display = 'none';
+  dictLookupBtn.disabled = true;
+  dictLookupBtn.innerHTML = '<span class="spinner"></span>查询中...';
+
+  try {
+    const prompt = `请查询单词"${word}"的词典信息。语言：${langName}。
+
+请只返回一个严格的 JSON 对象，不要任何 Markdown、解释或额外文字：
+{
+  "word": "原词",
+  "ipa": "音标，用 IPA 格式",
+  "pos": "词性，如 noun/verb/adjective 等",
+  "definitions": ["释义1（用中文）", "释义2"],
+  "examples": [
+    {"text": "例句1（原文）", "translation": "例句1中文翻译"},
+    {"text": "例句2", "translation": "翻译2"}
+  ]
+}
+
+如果该语言不是英语，释义和例句翻译用中文。如果是中文单词，释义用中文解释，例句为中文句子。`;
+
+    const body = { provider: active.id, api_key: active.key,
+      source_lang: dictLang.value, target_lang: 'zh', text: prompt };
+    const resp = await fetch('/api/translate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await resp.json();
+    if (data.error) { showToast(data.error, true); return; }
+
+    // 解析 JSON（处理可能的 markdown 包裹）
+    let json = data.translation;
+    json = json.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    const result = JSON.parse(json);
+
+    dictWordDisplay.textContent = result.word || word;
+    dictIpa.textContent = result.ipa ? `/${result.ipa}/` : '';
+
+    dictPos.innerHTML = '';
+    if (result.pos) {
+      result.pos.split(/[,，]/).forEach(p => {
+        const tag = document.createElement('span');
+        tag.className = 'pos-tag';
+        tag.textContent = p.trim();
+        dictPos.appendChild(tag);
+      });
+    }
+
+    dictDef.innerHTML = '';
+    (result.definitions || []).forEach((d, i) => {
+      const div = document.createElement('div');
+      div.className = 'def-item';
+      div.textContent = `${i + 1}. ${d}`;
+      dictDef.appendChild(div);
+    });
+
+    dictExamples.innerHTML = '';
+    (result.examples || []).forEach(ex => {
+      const div = document.createElement('div');
+      div.className = 'example-item';
+      div.innerHTML = `<div class="example-orig">${ex.text}</div><div class="example-trans">${ex.translation || ''}</div>`;
+      dictExamples.appendChild(div);
+    });
+
+    dictResult.style.display = '';
+  } catch(e) {
+    showToast('查询失败：' + e.message, true);
+  } finally {
+    dictLookupBtn.disabled = false;
+    dictLookupBtn.textContent = '查询';
+  }
+}
+
+function pronounceWord() {
+  const word = dictWordDisplay.textContent || dictWord.value.trim();
+  if (!word) return;
+
+  const langCode = dictLang.value;
+  // 映射语言代码到 BCP 47
+  const langMap = { 'zh': 'zh-CN', 'en-US': 'en-US', 'en-GB': 'en-GB',
+    'de': 'de-DE', 'fr': 'fr-FR', 'es': 'es-ES', 'pt': 'pt-PT',
+    'pl': 'pl-PL', 'ja': 'ja-JP', 'ko': 'ko-KR', 'yue': 'zh-HK' };
+  const lang = langMap[langCode] || langCode;
+
+  const utterance = new SpeechSynthesisUtterance(word);
+  utterance.lang = lang;
+  utterance.rate = 0.85;
+  speechSynthesis.speak(utterance);
+}
+</script>
+</body>
+</html>
