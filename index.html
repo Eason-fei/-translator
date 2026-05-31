@@ -903,6 +903,7 @@ function processFile(file) {
     previewImg.src = reader.result;
     imagePreview.style.display = 'inline-block';
     inputTextEl.style.display = 'none';
+    if (autoTranslateEl.checked) doTranslate();
   };
   reader.readAsDataURL(file);
 }
@@ -912,6 +913,8 @@ function removeImage() {
   imagePreview.style.display = 'none';
   previewImg.src = '';
   inputTextEl.style.display = '';
+  outputTextEl.textContent = '';
+  hideFeedbackRows();
 }
 
 // ============ 设置 ============
@@ -1042,9 +1045,9 @@ async function doTranslate() {
 function tryAutoTranslate() {
   clearTimeout(debounceTimer);
   const text = inputTextEl.value.trim();
-  if (!text || imageData) return; // 有图片时不自动翻译
+  if (!text && !imageData) return;
   debounceTimer = setTimeout(() => {
-    if (inputTextEl.value.trim() === text) doTranslate();
+    if (imageData || inputTextEl.value.trim() === text) doTranslate();
   }, 500);
 }
 
