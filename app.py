@@ -73,9 +73,21 @@ def sync_prompts():
 
 
 def check_and_update():
-    """启动时检查 GitHub 是否有新版本，有则更新 app.py / index.html 并重启"""
+    """启动时检查 GitHub 是否有新版本，有则更新 app.py / index.html 并重启
+    安全机制：5 分钟内不重复更新，防止 raw CDN 缓存导致版本回退"""
     if not GITHUB_REPO:
         return
+
+    # 防止短时间内重复更新（raw CDN 缓存延迟可能返回旧版）
+    last_update_file = DATA_DIR / ".last_update"
+    if last_update_file.exists():
+        try:
+            last_ts = float(last_update_file.read_text().strip())
+            if time.time() - last_ts < 300:  # 5 分钟内不重复
+                return
+        except Exception:
+            pass
+
     updated = False
     for filename in ("app.py", "index.html"):
         url = f"https://raw.githubusercontent.com/{GITHUB_REPO}/{GITHUB_BRANCH}/{filename}"
@@ -88,23 +100,24 @@ def check_and_update():
                 continue
             if r.text.strip() == local.read_text(encoding="utf-8").strip():
                 continue
-            # 备份 → 写新版 → 标记重启
+            # 备份 → 写新版
             backup = local.with_suffix(local.suffix + ".bak")
             local.rename(backup)
             local.write_text(r.text, encoding="utf-8")
-            # 语法校验（只对 Python 文件）
+            # 语法校验
             if filename.endswith(".py"):
                 try:
                     import ast
                     ast.parse(r.text)
                 except SyntaxError:
-                    # 语法错误，回滚
                     backup.rename(local)
                     continue
             updated = True
         except Exception:
             pass
+
     if updated:
+        last_update_file.write_text(str(time.time()))
         print("[Hermes-Linguist] 代码已更新，正在重启...")
         os.execv(sys.executable, [sys.executable] + sys.argv)
 
@@ -426,6 +439,6 @@ def open_browser():
 
 
 if __name__ == "__main__":
-    check_and_update()  # 先检查代码更新，有新版则自动重启
+    check_and_update()  # 启动时检查代码更新（5分钟内不重复）
     threading.Thread(target=open_browser, daemon=True).start()
     app.run(host="127.0.0.1", port=58958, debug=False)
