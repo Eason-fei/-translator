@@ -295,6 +295,7 @@ body {
     <h1 class="logo">🌐 翻译器</h1>
     <div style="display:flex;gap:8px">
       <button id="splitBtn" class="icon-btn" title="分屏模式：上半屏看对方消息译文，下半屏写回复">📱 分屏</button>
+      <button id="feedbackOpnBtn" class="icon-btn" title="意见反馈">💬</button>
       <button id="settingsBtn" class="icon-btn" title="设置 API Key">⚙️</button>
     </div>
   </header>
@@ -427,6 +428,29 @@ body {
   </div>
 </div>
 
+<!-- 意见反馈弹窗 -->
+<div id="feedbackModal" class="modal" style="display:none">
+  <div class="modal-content" style="max-width:480px">
+    <div class="modal-header">
+      <h2>💬 意见反馈</h2>
+      <button id="closeFeedback" class="close-btn">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="color:var(--text-muted);font-size:13px;margin-bottom:12px">
+        有什么翻译问题、功能建议、或想说的话？提交后会自动同步到后台优化。
+      </p>
+      <textarea id="feedbackNote" placeholder="写下你的意见..."
+        style="width:100%;height:120px;background:var(--bg);border:1px solid var(--border);
+               color:var(--text);border-radius:6px;padding:10px;font-size:14px;resize:vertical;
+               outline:none;font-family:inherit"></textarea>
+      <div id="feedbackMsg" style="color:var(--green);font-size:13px;margin-top:8px;display:none"></div>
+    </div>
+    <div class="modal-footer">
+      <button id="submitFeedback" class="primary-btn">提交</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ============ 状态 ============
 let imageData = null; // base64 string
@@ -462,6 +486,13 @@ const replyInput    = $id('replyInput');
 const replyOutput   = $id('replyOutput');
 const replyCopyBtn  = $id('replyCopyBtn');
 const replyCopyBtnBig = $id('replyCopyBtnBig');
+// 意见箱
+const feedbackOpnBtn  = $id('feedbackOpnBtn');
+const feedbackModal   = $id('feedbackModal');
+const closeFeedback   = $id('closeFeedback');
+const submitFeedback  = $id('submitFeedback');
+const feedbackNote    = $id('feedbackNote');
+const feedbackMsg     = $id('feedbackMsg');
 let splitMode = false;
 let replyDebounce = null;
 // 反馈相关
@@ -665,6 +696,15 @@ function setupEvents() {
   closeSettings.addEventListener('click', () => settingsModal.style.display = 'none');
   settingsModal.addEventListener('click', e => { if (e.target === settingsModal) settingsModal.style.display = 'none'; });
   saveSettings.addEventListener('click', saveSettingsHandler);
+  // 意见箱
+  feedbackOpnBtn.addEventListener('click', () => {
+    feedbackNote.value = '';
+    feedbackMsg.style.display = 'none';
+    feedbackModal.style.display = 'flex';
+  });
+  closeFeedback.addEventListener('click', () => feedbackModal.style.display = 'none');
+  feedbackModal.addEventListener('click', e => { if (e.target === feedbackModal) feedbackModal.style.display = 'none'; });
+  submitFeedback.addEventListener('click', submitFeedbackHandler);
   imageInput.addEventListener('change', handleUpload);
   removeImageBtn.addEventListener('click', removeImage);
   document.addEventListener('paste', handlePaste);
@@ -857,6 +897,43 @@ function saveSettingsHandler() {
   if (!feedbackEnabled) hideFeedbackRows();
   settingsModal.style.display = 'none';
   showToast('设置已保存');
+}
+
+async function submitFeedbackHandler() {
+  const note = feedbackNote.value.trim();
+  if (!note) { showToast('请填写意见内容', true); return; }
+  submitFeedback.disabled = true;
+  submitFeedback.innerHTML = '<span class="spinner"></span>提交中...';
+  try {
+    const resp = await fetch('/api/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        rating: 'suggestion',
+        device_id: getDeviceId(),
+        source_lang: sourceLangEl.value,
+        target_lang: targetLangEl.value,
+        note: note
+      })
+    });
+    const data = await resp.json();
+    if (data.error) {
+      feedbackMsg.style.color = 'var(--red)';
+      feedbackMsg.textContent = '错误：' + data.error;
+    } else {
+      feedbackMsg.style.color = 'var(--green)';
+      feedbackMsg.textContent = '✅ 已提交，感谢反馈！';
+      feedbackNote.value = '';
+    }
+    feedbackMsg.style.display = '';
+  } catch(e) {
+    feedbackMsg.style.color = 'var(--red)';
+    feedbackMsg.textContent = '网络错误：' + e.message;
+    feedbackMsg.style.display = '';
+  } finally {
+    submitFeedback.disabled = false;
+    submitFeedback.textContent = '提交';
+  }
 }
 
 // ============ 翻译 ============

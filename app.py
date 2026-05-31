@@ -245,7 +245,7 @@ def translate():
 def save_feedback():
     """收集翻译质量反馈，一行一条 JSON，写入 feedback/ 目录"""
     data = request.json or {}
-    rating = data.get("rating")  # "good" | "bad"
+    rating = data.get("rating")  # "good" | "bad" | "suggestion"
     source_lang = data.get("source_lang", "")
     target_lang = data.get("target_lang", "")
     input_text = data.get("input", "")
@@ -254,8 +254,11 @@ def save_feedback():
     provider = data.get("provider", "")
     note = data.get("note", "")
 
-    if rating not in ("good", "bad"):
-        return jsonify({"error": "rating 必须是 good 或 bad"}), 400
+    if rating not in ("good", "bad", "suggestion"):
+        return jsonify({"error": "rating 必须是 good、bad 或 suggestion"}), 400
+
+    if rating == "suggestion" and not note.strip():
+        return jsonify({"error": "意见反馈需要填写内容"}), 400
 
     entry = {
         "time": time.strftime("%Y-%m-%dT%H:%M:%S"),
