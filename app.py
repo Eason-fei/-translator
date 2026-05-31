@@ -3,9 +3,11 @@ import os
 import sys
 import threading
 import time
+import asyncio
 from pathlib import Path
 
-from flask import Flask, request, jsonify, send_from_directory
+import edge_tts
+from flask import Flask, request, jsonify, send_from_directory, Response
 import requests
 
 
@@ -282,6 +284,48 @@ def save_feedback():
         return jsonify({"ok": True})
     except OSError as e:
         return jsonify({"error": f"写入失败: {e}"}), 500
+
+
+# Edge TTS 神经语音映射
+VOICE_MAP = {
+    "zh": "zh-CN-XiaoxiaoNeural",
+    "en-US": "en-US-JennyNeural",
+    "en-GB": "en-GB-SoniaNeural",
+    "de": "de-DE-KatjaNeural",
+    "fr": "fr-FR-DeniseNeural",
+    "es": "es-ES-ElviraNeural",
+    "pt": "pt-PT-RaquelNeural",
+    "pl": "pl-PL-ZofiaNeural",
+    "ja": "ja-JP-NanamiNeural",
+    "ko": "ko-KR-SunHiNeural",
+    "yue": "zh-HK-HiuMaanNeural",
+}
+
+
+@app.route("/api/tts", methods=["POST"])
+def text_to_speech():
+    """Edge TTS 神经语音合成"""
+    data = request.json or {}
+    text = data.get("text", "").strip()
+    lang_code = data.get("lang", "en-US")
+    if not text:
+        return jsonify({"error": "缺少文本"}), 400
+
+    voice = VOICE_MAP.get(lang_code, "en-US-JennyNeural")
+
+    async def _generate():
+        communicate = edge_tts.Communicate(text, voice)
+        mp3_data = b""
+        async for chunk in communicate.stream():
+            if chunk["type"] == "audio":
+                mp3_data += chunk["data"]
+        return mp3_data
+
+    try:
+        mp3_data = asyncio.run(_generate())
+        return Response(mp3_data, mimetype="audio/mpeg")
+    except Exception as e:
+        return jsonify({"error": f"TTS 错误: {e}"}), 500
 
 
 # ─── Provider 适配器 ───────────────────────────────────────────
